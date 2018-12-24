@@ -10,15 +10,14 @@ url = "http://social.technet.microsoft.com/Profile/u/activities/feed?displayName
 
 def get_answered_threads():
 
-    now = datetime.now()
     rss = urlopen(url)
     threads = {}
     titles = []
     links = []
     pub_date = []
     update_date = []
-    
-    pass
+    rss_activities = urlopen(url)
+    bsObj = BeautifulSoup(rss_activities, 'xml')
 
 
 def filter_answered_threads():
