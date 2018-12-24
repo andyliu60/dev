@@ -5,7 +5,9 @@ import requests
 import tushare as ts
 from ifttt import Notification
 
-pro = ts.pro_api('27ecfe3c4981fc3d653e9cd70cfedf1e87787d01253f6282706a4e2e')
+token = ''
+
+pro = ts.pro_api(token)
 
 yhcs = '601933.SH'
 dhgf = '002236.SZ'
