@@ -19,6 +19,9 @@ def get_answered_threads():
     rss_activities = urlopen(url)
     bsObj = BeautifulSoup(rss_activities, 'xml')
 
+def format_datetime(dt):
+    
+    formatted_dt = dt.strip('Z').replace('T', ' ')
 
 def filter_answered_threads():
     pass
