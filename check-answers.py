@@ -1,4 +1,6 @@
 #! /usr/bin/python3
+# -*- coding: utf-8 -*-
+
 import requests
 from bs4 import BeautifulSoup
 import lxml
@@ -11,20 +13,33 @@ import shelve
 url = "https://social.technet.microsoft.com/Profile/u/activities/feed?displayName=Andy%20Liu50"
 rss_activities = urlopen(url)
 rss_activities_bsObj = BeautifulSoup(rss_activities, 'xml')
-
 filter_word1 = 'answered'
 filter_word2 = 'Answered'
 
 this_month = datetime.now().month
 s = shelve.open('check-answers', writeback=True)
+#s['last_sync_time'] = 1544727439.0
 if 'last_sync_time' not in s:
     raw_last_sync_time = rss_activities_bsObj.find("lastBuildDate").get_text().strip(' Z')
     last_sync_time = datetime.strptime(raw_last_sync_time, '%a, %d %b %Y %H:%M:%S').timestamp()
     s['last_sync_time'] = last_sync_time
 
-intune_new_threads = []
-scvmm_new_threads = []
-mata_new_threads = []  
+if 'intune_marked_answers' not in s:
+    s['intune_marked_answers'] = 0
+    
+if 'scvmm_marked_answers' not in s:
+    s['scvmm_marked_answers'] = 0
+
+if 'mata_marked_answers' not in s:
+    s['mata_marked_answers'] = 0
+
+current_time = datetime.now()
+if current_time.day == 1 and current_time.hour == 0 and current_time.minute == 0:
+    s['intune_marked_answers'] = 0
+    s['scvmm_marked_answers'] = 0
+    s['mata_marked_answers'] = 0
+
+new_threads = {"intune":[],"scvmm":[],"mata":[]}
 
 def get_new_threads():
     updated_datetimes = rss_activities_bsObj.findAll("a10:updated")
@@ -64,30 +79,27 @@ def filter_threads():
         if thread_create_time.month == this_month:
             new_thread = {"title":thread_title, "link":thread_link, "forum":thread_forum}
             if 'Intune' in thread_forum:
-                intune_new_threads.append(new_thread)
-                Notification(value1=thread_forum, value2=thread_title, event='op-answers').sent()
+                new_threads["intune"].append(new_thread)
+                Notification(value1=thread_forum, value2=thread_title, value3=thread_link, event='op-answers').sent()
             if 'Virtual Machine Manager' in thread_forum:
-                scvmm_new_threads.append(new_thread)
-                Notification(value1=thread_forum, value2=thread_title, event='op-answers').sent()
+                new_threads["scvmm"].append(new_thread)
+                Notification(value1=thread_forum, value2=thread_title, value3=thread_link, event='op-answers').sent()
             if 'Microsoft Advanced Threat Analytics' in thread_forum:
-                mata_new_threads.append(new_thread)
-                Notification(value1=thread_forum, value2=thread_title, event='op-answers').sent()
-
-filter_threads()
-if intune_new_threads is not None:
-    s['intune_marked_answers'] += len(intune_new_threads)
-    
-if scvmm_new_threads is not None:
-    s['scvmm_marked_answers'] += len(scvmm_new_threads)
-        
-
-if mata_new_threads is not None:
-    s['mata_marked_answers'] += len(mata_new_threads)
-        
+                new_threads["mata"].append(new_thread)
+                Notification(value1=thread_forum, value2=thread_title, value3=thread_link, event='op-answers').sent()
 
 raw_last_sync_time = rss_activities_bsObj.find("lastBuildDate").get_text().strip(' Z')
 last_sync_time = datetime.strptime(raw_last_sync_time, '%a, %d %b %Y %H:%M:%S').timestamp()
-s['last_sync_time'] = last_sync_time
+
+if s['last_sync_time'] != last_sync_time:
+    filter_threads()
+    s['intune_marked_answers'] += len(new_threads["intune"])
+    s['scvmm_marked_answers'] += len(new_threads["scvmm"])
+    s['mata_marked_answers'] += len(new_threads["mata"])
+    s['last_sync_time'] = last_sync_time
+    summary = "Intune: %d | SCVMM: %d | MATA: %d" % (s['intune_marked_answers'], s['scvmm_marked_answers'], s['mata_marked_answers'])
+    Notification(value1 = summary, event = 'mark-summary').sent()
+
 s.close()
 
     
